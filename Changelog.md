@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+- Start fixing tests since all name changes
+- Add fuji_set_ssid_enc(NetConfig *nc, SSIDInfoEncoding e) to allow applications to url encode the SSID/password information
+  This is to support devices that wish to url encode the ssid/password data before sending it to the FujiNet, or even expect users to type in url encoded strings.
+  This adds a lot of code to your application, consider carefully if you need to encode the data, and potentially find better way to get the input from the user
+  rather than expecting them to enter url encoded strings. This code is aimed at supporting c64 and using commands in Commodore Basic like:
+  OPEN #1,15,30,15,"SETSSID:YourSSID,Your%5FPsk"
+  So in essence this is soley because the C64 is missing characters $5B to $60, so cannot type chars "[\]^_`", and 7B to 7D "{|}"
+
 ## [3.0.3] - 2024-04-02
 
 Bugfix release:

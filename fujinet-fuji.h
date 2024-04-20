@@ -16,16 +16,21 @@
 
 
 enum WifiStatus {
-    no_ssid_available   = 1,
-    connected           = 3,
-    connect_failed      = 4,
-    connection_lost     = 5
+  no_ssid_available   = 1,
+  connected           = 3,
+  connect_failed      = 4,
+  connection_lost     = 5
 };
 
 typedef struct {
   char ssid[SSID_MAXLEN];
   signed char rssi;
 } SSIDInfo;
+
+enum SSIDInfoEncoding {
+  none,            // by design, 0 is none so existing applications that don't use it will not be affected
+  url_encoded
+};
 
 typedef struct
 {
@@ -356,10 +361,16 @@ bool fuji_set_sio_external_clock(uint16_t rate);
 bool fuji_set_host_prefix(uint8_t hs, char *prefix);
 
 /*
- * Set the SSID information from NetConfig structure
+ * Set the SSID information from NetConfig structure, does not encode the SSID or password (uses "none" type of SSIDInfoEncoding)
  * @return success status of request
  */
 bool fuji_set_ssid(NetConfig *nc);
+
+/*
+ * Set the SSID information from NetConfig structure, send the data using the specific encoding (e.g. URL encoded)
+ * @return success status of request
+ */
+bool fuji_set_ssid_enc(NetConfig *nc, enum SSIDInfoEncoding e);
 
 /*
  * Gets the FNStatus information from FUJI device.

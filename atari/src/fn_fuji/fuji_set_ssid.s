@@ -19,12 +19,20 @@
 
         ; copy mem location to DCB, and call bus
         mwa     tmp7, IO_DCB::dbuflo
+        mva     #$00, IO_DCB::daux2
         jsr     _bus
         jmp     _fuji_success
+.endproc
+
+; bool fuji_set_ssid(NetConfig *fuji_net_config)
+; sends the ssid to bus.
+.proc _fuji_set_ssid_end
+
+
 .endproc
 
 .rodata
 .define NCsz .sizeof(NetConfig)
 
 t_fuji_set_ssid:
-        .byte $fb, $80, <NCsz, >NCsz, $01, $00
+        .byte $fb, $80, <NCsz, >NCsz, $01, $ff

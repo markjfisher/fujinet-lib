@@ -12,12 +12,18 @@
 #ifdef __CBM__
 #include <cbm.h>
 #define FUJI_CBM_DEV 30
+#define FUJI_CMD_CHANNEL 15
 #endif // __CBM__
 
 #define FILE_MAXLEN 36
 #define SSID_MAXLEN 33 /* 32 + NULL */
 #define MAX_APPKEY_LEN    64
+
+#ifdef __CBM__
+#define MAX_PASSWORD_LEN  65
+#else
 #define MAX_PASSWORD_LEN  64
+#endif
 
 
 enum WifiStatus {

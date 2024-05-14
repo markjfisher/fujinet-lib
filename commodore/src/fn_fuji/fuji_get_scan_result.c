@@ -1,16 +1,17 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include "fujinet-fuji.h"
+#include "fujinet-fuji-cbm.h"
 
 bool fuji_get_scan_result(uint8_t n, SSIDInfo *ssid_info)
 {
 	int bytes_read;
-	uint8_t pl[3]; // CC65 can't do direct assignment: uint8_t pl[3] = {0xFC, n, 0x00};
+	uint8_t pl[3];
 	pl[0] = 0xFC;
 	pl[1] = n;
 	pl[2] = 0x00;
 
-	if (cbm_open(FUJI_CMD_CHANNEL, FUJI_CBM_DEV, FUJI_CMD_CHANNEL, (char *) pl) != 0) {
+	if (fuji_cbm_open(FUJI_CMD_CHANNEL, FUJI_CBM_DEV, FUJI_CMD_CHANNEL, 3, (uint8_t *) pl) != 0) {
 		return false;
 	}
 

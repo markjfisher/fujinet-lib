@@ -273,10 +273,18 @@ bool fuji_mount_disk_image(uint8_t ds, uint8_t mode);
 bool fuji_mount_host_slot(uint8_t hs);
 
 /*
- * Open the given directory on the given host slot
+ * Open the given directory on the given host slot.
+ * The path_filter is a buffer (not a string) of 256 bytes, with a separator of the \0 char between the path and filter parts.
  * @return true if successful, false otherwise
  */
 bool fuji_open_directory(uint8_t hs, char *path_filter);
+
+/*
+ * Open the given directory on the given host slot.
+ * path and filter are separate strings. If filter is not set, it is NULL
+ * @return true if successful, false otherwise
+ */
+bool fuji_open_directory2(uint8_t hs, char *path, char *filter);
 
 /*
  * Save `size` device slots to FN

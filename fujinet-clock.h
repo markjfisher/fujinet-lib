@@ -24,7 +24,10 @@ typedef enum time_format_t {
 
 	// STRING formats are full null terminated strings
 	TZ_ISO_STRING,      // an ISO format: YYYY-MM-DDTHH:MM:SS+HHMM - Uses the current FN Timezone
-	UTC_ISO_STRING      // Current UTC time, still ISO format, but with 0000 offset: YYYY-MM-DDTHH:MM:SS+HHMM
+	UTC_ISO_STRING,     // Current UTC time, still ISO format, but with 0000 offset: YYYY-MM-DDTHH:MM:SS+HHMM
+
+	// APPLE 3 SOS format
+	APPLE3_SOS_BINARY   // Apple 3 SOS format, YYYYMMDD0HHMMSS000
 
 } TimeFormat;
 
@@ -34,6 +37,13 @@ typedef enum time_format_t {
  * @return fujinet-clock status/error code (See FN_ERR_* values)
  */
 uint8_t clock_set_tz(const char *tz);
+
+/**
+ * @brief  Set the alternate clock's timezone - NOTE: Use clock_get_time_tz instead if you are trying to get the time for a particular timezone without amending the system timezone
+ * @param  tz the timezone string to apply
+ * @return fujinet-clock status/error code (See FN_ERR_* values)
+ */
+uint8_t clock_set_alternate_tz(const char *tz);
 
 /**
  * @brief  Get the FN clock's timezone

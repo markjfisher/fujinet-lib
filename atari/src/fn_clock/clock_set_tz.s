@@ -1,5 +1,5 @@
-        .export         _clock_set_apetime_tz
         .export         _clock_set_tz
+        .export         _clock_set_alternate_tz
 
         .import         _bus
         .import         _fuji_success
@@ -13,14 +13,14 @@
         .include        "zp.inc"
 
 
-; uint8_t clock_set_alternate_tz(char *tz);
+; uint8_t clock_set_alternate_tz(const char *tz);
 _clock_set_alternate_tz:
         ; for backwards compatibility, this is the same as the old "APETIME" settz
         ldy     #SIO_APETIMECMD_SETTZ
         sty     IO_DCB::dcomnd
         bne     _clock_set_tz_common
 
-; uint8_t clock_set_tz(char *tz);
+; uint8_t clock_set_tz(const char *tz);
 _clock_set_tz:
         ldy     #'t'
         sty     IO_DCB::dcomnd

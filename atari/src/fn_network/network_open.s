@@ -1,22 +1,28 @@
         .export     _network_open
+        .export     _network_open_devices
 
         .import     _bus
         .import     _fn_device_error
         .import     _bus_status
         .import     _network_unit
         .import     _copy_network_cmd_data
+        .import     _network_read_interrupt_enable
         .import     fn_open_mode_table
         .import     fn_open_trans_table
         .import     popa
         .import     popax
 
         .include    "device.inc"
+        .include    "fujinet-network.inc"
         .include    "zp.inc"
         .include    "macros.inc"
 
 ; uint8_t network_open(const char* devicespec, uint8_t mode, uint8_t trans);
 .proc _network_open
         pha                             ; save trans
+
+        ; try and enable interrupts, this will not do anything if the interrupt is already setup, or we don't allow interrupts for reading.
+        jsr     _network_read_interrupt_enable
 
         ldy     #$00
         sty     _fn_device_error
@@ -49,8 +55,23 @@
         jsr     _bus
         ; restore the unit for the status call
         lda     IO_DCB::dunit
-        jmp     _bus_status
+        jsr     _bus_status
+
+        ; we have an FN_ERR_ status in A, if it's OK we increment the open_devices
+        tay                             ; save the error code
+        cmp     #FN_ERR_OK
+        bne     :+
+        inc     _network_open_devices
+:       
+        tya     ; ensures Z flag has the correct value based on the error status in case we did an INC above
+        rts
+
 .endproc
+
+.data
+
+_network_open_devices:
+        .byte 0
 
 .rodata
 t_network_open:

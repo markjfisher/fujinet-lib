@@ -10,6 +10,8 @@
 #ifdef _CMOC_VERSION_
 #include <cmoc.h>
 #include <coco.h>
+#include "stdbool-coco.h"
+
 #else
 #include <stdint.h>
 #include <stdbool.h>
@@ -304,6 +306,11 @@ uint8_t network_fs_rmdir(const char *devicespec);
  * @return fujinet-network error code (see FN_ERR_* values)
  */
 uint8_t network_fs_cd(const char *devicespec);
+
+/**
+ * @brief Flag that indicates if network interrupts are being used
+ */
+extern bool network_read_interrupt_enabled;
 
 #define FN_ERR_OK               (0x00)      /* No error */
 #define FN_ERR_IO_ERROR         (0x01)      /* There was IO error/issue with the device */

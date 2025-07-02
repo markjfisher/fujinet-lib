@@ -98,6 +98,16 @@ int16_t network_read(const char *devicespec, uint8_t *buf, uint16_t len)
         if (amount_left == 0) break;
 
 #if defined(__ATARI__)
+        // Check if we have enabled VPRCED checking, and there is a trip before calling status, otherwise tight loop.
+        // Another change eventually here would be to also support a callback function the user provides
+        // so they can give feedback in their application while there's data being read
+        if (network_read_interrupt_enabled && !network_read_trip) {
+            // No data available, reloop
+            continue;
+        }
+        // reset the trip - we may not have interrupt enabled, but that doesn't matter
+        network_read_trip = false;
+
         r = network_status_unit(unit, &fn_network_bw, &fn_network_conn, &fn_network_error);
 #elif defined(__APPLE2__)
         r = network_status(devicespec, &fn_network_bw, &fn_network_conn, &fn_network_error);

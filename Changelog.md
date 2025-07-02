@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- [atari] Add interrupt handling for network read when awaiting bytes.
+
 ## [4.7.7] - 2025-06-18
 
 - [atari] Fix return codes from clock_get_time, clock_get_time_tz

@@ -4,10 +4,13 @@
         .import     _bus_status
         .import     _fn_device_error
         .import     _network_unit
+        .import     _network_read_interrupt_disable
+        .import     _network_open_devices
         .import     _copy_network_cmd_data
         .import     popax
 
         .include    "device.inc"
+        .include    "fujinet-network.inc"
         .include    "zp.inc"
         .include    "macros.inc"
 
@@ -30,7 +33,27 @@
         jsr     _bus
 
         lda     tmp8
-        jmp     _bus_status
+        jsr     _bus_status
+
+        pha                     ; save the error code
+        cmp     #FN_ERR_OK
+        ; is it was not OK, then skip decreasing the open count, as the device was unable to close.
+        ; this is EXTREMELY unlikely.
+        bne     :+
+
+        ; no error, so decrement the open devices count
+        dec     _network_open_devices
+        bne     :+              ; did we reach 0?
+
+        ; yes, attempt to disable the interrupt. This is idempotent.
+        jsr     _network_read_interrupt_disable
+
+:
+        ; restore X, and A to their correct values from the bus status
+        ldx     #$00
+        pla     ; ensures Z flag has the correct value based on the error status in case we did a DEC above
+        rts
+
 .endproc
 
 .rodata

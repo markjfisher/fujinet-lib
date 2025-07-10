@@ -19,16 +19,23 @@
 ; Return will be either FN_ERR_OK, or FN_ERR_IO_ERROR.
 ; Actual device error is stored in err
 _network_status:
-        axinto  ptr1            ; err location
+
+        axinto  save_err_loc            ; err location
 
         ldy     #$00
         sty     _fn_device_error
 
-        popax   ptr2            ; connected status location
-        popax   ptr3            ; bytes waiting location
+        popax   save_err_con    ; connected status location
+        popax   save_err_bw     ; bytes waiting location
 
         jsr     popax           ; devicespec
-        jsr     _network_unit
+        jsr     _network_unit   ; this trashes ptr1 as it's C code and unpredicatable in tmp/ptr usage
+        pha
+        mwa     save_err_loc, ptr1
+        mwa     save_err_con, ptr2
+        mwa     save_err_bw, ptr3
+        pla
+
         jmp     common
 
 ; uint8_t network_status_unit(uint8_t unit, uint16_t *bw, uint8_t *c, uint8_t *err)
@@ -60,6 +67,11 @@ common:
         ; convert dstats to a library error
         lda     IO_DCB::dstats
         jmp     _fn_error
+
+.bss
+save_err_loc: .res 2
+save_err_con: .res 2
+save_err_bw:  .res 2
 
 .rodata
 t_network_status:

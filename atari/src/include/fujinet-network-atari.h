@@ -12,5 +12,6 @@ void network_interrupt_disable(void);
 void network_interrupt_enable(void);
 
 extern bool network_read_trip;
+extern uint8_t network_has_trip;
 
 #endif

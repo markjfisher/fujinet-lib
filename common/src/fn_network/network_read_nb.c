@@ -15,6 +15,7 @@
 #ifdef __ATARI__
 #include "fujinet-network-atari.h"
 #include "fujinet-bus-atari.h"
+#include <atari.h>
 #endif
 
 #ifdef __APPLE2__
@@ -38,6 +39,12 @@
 
 #define MAX_READ_SIZE 512
 
+#include <stdio.h>
+extern void debug();
+
+
+extern uint8_t unit;
+extern uint8_t perform_status(const char *devicespec);
 
 int16_t network_read_nb(const char *devicespec, uint8_t *buf, uint16_t len)
 {
@@ -58,8 +65,8 @@ int16_t network_read_nb(const char *devicespec, uint8_t *buf, uint16_t len)
     const char *after;
 #endif
 
-#if defined(__ATARI__) || defined(_CMOC_VERSION_) || defined(__CBM__) || defined(__PMD85__)
-    uint8_t unit = 0;
+#if defined(__ATARI__) || defined(__APPLE2__) || defined(_CMOC_VERSION_) || defined(__CBM__) || defined(__PMD85__)
+    unit = 0;
 #endif
 
 
@@ -85,47 +92,56 @@ int16_t network_read_nb(const char *devicespec, uint8_t *buf, uint16_t len)
     fn_bytes_read = 0;
     fn_device_error = 0;
 
-#if defined(__ATARI__) || defined(_CMOC_VERSION_) || defined(__PMD85__)
+#if defined(__ATARI__) || defined(__APPLE2__) || defined(_CMOC_VERSION_) || defined(__PMD85__)
     unit = network_unit(devicespec);
 #elif defined(__CBM__)
     unit = getDeviceNumber(devicespec, &after);
 #endif
 
-#if defined(__ATARI__)
-        // Check if we have enabled VPRCED checking, and there is a trip before calling status, otherwise tight loop.
-        // Another change eventually here would be to also support a callback function the user provides
-        // so they can give feedback in their application while there's data being read
-        if (network_read_interrupt_enabled && !network_read_trip) {
-            // No data available, exit with 0 to indicate no bytes read
-            return 0;
-        }
-        // reset the trip - we may not have interrupt enabled, but that doesn't matter
-        network_read_trip = false;
 
-        r = network_status_unit(unit, &fn_network_bw, &fn_network_conn, &fn_network_error);
-#elif defined(__APPLE2__)
-    r = network_status(devicespec, &fn_network_bw, &fn_network_conn, &fn_network_error);
-#elif defined(__CBM__)
-    r = network_status(devicespec, &fn_network_bw, &fn_network_conn, &fn_network_error);
-#elif defined(_CMOC_VERSION_) || defined(__PMD85__)
-    r = network_status(devicespec, &fn_network_bw, &fn_network_conn, &fn_network_error); // TODO: Status return needs fixing.
+#if defined(__ATARI__)
+// Check if we have enabled VPRCED checking, and there is a trip before calling status, otherwise tight loop.
+// Another change eventually here would be to also support a callback function the user provides
+// so they can give feedback in their application while there's data being read
+if (network_read_interrupt_enabled && !network_read_trip) {
+    // No data available, exit with 0 to indicate no bytes read
+    return 0;
+}
 #endif
+
+    r = perform_status(devicespec);
 
     // check if the status failed.
     if (r != 0) {
+        // this is a one-shot read, so we don't have to set the bytes_read value.
+#if defined(__ATARI__)
+        network_read_trip = false;
+#endif
+
         return -r;
     }
 
     // EOF hit, exit reading
-    if (fn_network_error == 136) return 0;
+    if (fn_network_error == 136) {
+#if defined(__ATARI__)
+        network_read_trip = false;
+#endif
+        return 0;
+    }
 
     // is there another error?
     if (fn_network_error != 1) {
+#if defined(__ATARI__)
+        network_read_trip = false;
+#endif
         return -fn_network_error;
     }
 
     // we are waiting for bytes to become available while still connected, so no data can be read
     if (fn_network_bw == 0 && fn_network_conn == 1) {
+#if defined(__ATARI__)
+        network_read_trip = false;
+#endif
         return 0;
     }
 
@@ -138,6 +154,11 @@ int16_t network_read_nb(const char *devicespec, uint8_t *buf, uint16_t len)
 
 #if defined(__ATARI__)
     sio_read(unit, buf, fetch_size);
+
+    // reset the trip - we may not have interrupt enabled, but that doesn't matter. This should be done after the buffer is cleared.
+    network_read_trip = false;
+    PIA.pactl |= 1;
+
 #elif defined(__APPLE2__)
     sp_read_nw(sp_network, fetch_size);
     memcpy(buf, sp_payload, fetch_size);

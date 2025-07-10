@@ -14,6 +14,7 @@
 #ifdef __ATARI__
 #include "fujinet-network-atari.h"
 #include "fujinet-bus-atari.h"
+#include <atari.h>
 #endif
 
 #ifdef __APPLE2__
@@ -37,6 +38,10 @@
 
 #define MAX_READ_SIZE 512
 
+// #include <stdio.h>
+
+extern uint8_t unit;
+extern uint8_t perform_status(const char *devicespec);
 
 int16_t network_read(const char *devicespec, uint8_t *buf, uint16_t len)
 {
@@ -60,19 +65,19 @@ int16_t network_read(const char *devicespec, uint8_t *buf, uint16_t len)
 #endif
 
 #if defined(__ATARI__) || defined(_CMOC_VERSION_) || defined(__CBM__) || defined(__PMD85__)
-    uint8_t unit = 0;
+    unit = 0;
 #endif
 
     if (len == 0 || buf == NULL) {
 
 #if defined(__ATARI__)
-        return fn_error(132); // invalid command
+        return -fn_error(132); // invalid command
 #elif defined(__APPLE2__)
-        return fn_error(SP_ERR_BAD_CMD);
+        return -fn_error(SP_ERR_BAD_CMD);
 #elif defined(__CBM__)
-        return FN_ERR_BAD_CMD;
+        return -FN_ERR_BAD_CMD;
 #elif defined(_CMOC_VERSION_) || defined(__PMD85__)
-        return fn_error(132); // invalid command
+        return -fn_error(132); // invalid command
 #endif
 
     }
@@ -80,7 +85,7 @@ int16_t network_read(const char *devicespec, uint8_t *buf, uint16_t len)
 #ifdef __APPLE2__
     // check we have the SP network value
     if (sp_network == 0) {
-        return fn_error(SP_ERR_BAD_UNIT);
+        return -fn_error(SP_ERR_BAD_UNIT);
     }
 #endif
 
@@ -95,7 +100,12 @@ int16_t network_read(const char *devicespec, uint8_t *buf, uint16_t len)
 
     while (1) {
         // exit condition
-        if (amount_left == 0) break;
+        if (amount_left == 0) {
+            // printf("amount_left == 0, breaking\n");
+            // the FN is still pinging the interrupt until we get an EOF, not just when the amount left is 0, we need to fetch the EOF status if it is there
+            perform_status(devicespec);
+            break;
+        }
 
 #if defined(__ATARI__)
         // Check if we have enabled VPRCED checking, and there is a trip before calling status, otherwise tight loop.
@@ -103,39 +113,41 @@ int16_t network_read(const char *devicespec, uint8_t *buf, uint16_t len)
         // so they can give feedback in their application while there's data being read
         if (network_read_interrupt_enabled && !network_read_trip) {
             // No data available, reloop
+            // printf("network_read_trip == false, continuing\n");
             continue;
         }
-        // reset the trip - we may not have interrupt enabled, but that doesn't matter
-        network_read_trip = false;
-
-        r = network_status_unit(unit, &fn_network_bw, &fn_network_conn, &fn_network_error);
-#elif defined(__APPLE2__)
-        r = network_status(devicespec, &fn_network_bw, &fn_network_conn, &fn_network_error);
-#elif defined(__CBM__)
-        r = network_status(devicespec, &fn_network_bw, &fn_network_conn, &fn_network_error);
-#elif defined(_CMOC_VERSION_) || defined(__PMD85__)
-        r = network_status(devicespec, &fn_network_bw, &fn_network_conn, &fn_network_error);
 #endif
+        r = perform_status(devicespec);
 
         // check if the status failed. The buffer may be partially filled, up to client if they want to use any of it. The count is in fn_bytes_read
         if (r != 0) {
             fn_bytes_read = total_read;
+#if defined(__ATARI__)
+            network_read_trip = false;
+#endif
             // r is the FN_ERR code
             return -r;
         }
 
         // EOF hit, exit reading
-        if (fn_network_error == 136) break;
+        if (fn_network_error == 136) {
+            // printf("fn_network_error == 136, breaking\n");
+            break;
+        }
 
         // is there another error? The buffer may be partially filled, up to client if they want to use any of it. The count is in fn_bytes_read
         if (fn_network_error != 1) {
             fn_bytes_read = total_read;
+#if defined(__ATARI__)
+            network_read_trip = false;
+#endif
             return -FN_ERR_IO_ERROR;
         }
 
         // we are waiting for bytes to become available while still connected.
         // Causes tight loop if there's a long delay reading from network into FN, so we may see lots of status requests
         if (fn_network_bw == 0 && fn_network_conn == 1) {
+            // printf("fn_network_bw == 0 && fn_network_conn == 1, continuing\n");
             continue;
         }
 
@@ -147,6 +159,7 @@ int16_t network_read(const char *devicespec, uint8_t *buf, uint16_t len)
 
 #if defined(__ATARI__)
         sio_read(unit, buf, fetch_size);
+
 #elif defined(__APPLE2__)
         sp_read_nw(sp_network, fetch_size);
         memcpy(buf, sp_payload, fetch_size);
@@ -169,7 +182,19 @@ int16_t network_read(const char *devicespec, uint8_t *buf, uint16_t len)
         buf += fetch_size;
         amount_left -= fetch_size;
         total_read += fetch_size;
+
+#if defined(__ATARI__)
+        // printf("set trip:0, rearming\n");
+        network_read_trip = false;
+        // rearm the interrupt
+        PIA.pactl |= 1;
+#endif
     }
+
+#if defined(__ATARI__)
+    // printf("setting trip to false at end\n");
+    network_read_trip = false;
+#endif
 
     // do this here at the end, not in the loop so sio_read for atari can continue to set fn_bytes_read for short reads.
     fn_bytes_read = total_read;
